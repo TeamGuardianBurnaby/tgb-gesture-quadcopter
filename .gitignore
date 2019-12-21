@@ -257,6 +257,10 @@ GitHub.sublime-
 *.jpg
 *.png
 
+## Machine Learning
+*.pickle
+*.model
+
 ## Experimental Directories
 **/experiments
 **/experimental
