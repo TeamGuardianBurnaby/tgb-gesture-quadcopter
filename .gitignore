@@ -256,3 +256,7 @@ GitHub.sublime-
 *.jpeg
 *.jpg
 *.png
+
+## Experimental Directories
+**/experiments
+**/experimental
