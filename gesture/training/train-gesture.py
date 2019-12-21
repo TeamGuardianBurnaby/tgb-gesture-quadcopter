@@ -1,7 +1,10 @@
+# USAGE
+# python train.py --dataset dataset --model pokedex.model --labelbin lb.pickle
+
 # set the matplotlib backend so figures can be saved in the background
 import matplotlib
 matplotlib.use("Agg")
- 
+
 # import the necessary packages
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import Adam
@@ -32,15 +35,15 @@ args = vars(ap.parse_args())
 
 # initialize the number of epochs to train for, initial learning rate,
 # batch size, and image dimensions
-EPOCHS = 100
+EPOCHS = 50
 INIT_LR = 1e-3
-BS = 32
+BS = 5
 IMAGE_DIMS = (96, 96, 3)
- 
+
 # initialize the data and labels
 data = []
 labels = []
- 
+
 # grab the image paths and randomly shuffle them
 print("[INFO] loading images...")
 imagePaths = sorted(list(paths.list_images(args["dataset"])))
@@ -60,16 +63,16 @@ for imagePath in imagePaths:
 	label = imagePath.split(os.path.sep)[-2]
 	labels.append(label)
 
-	# scale the raw pixel intensities to the range [0, 1]
-	data = np.array(data, dtype="float") / 255.0
-	labels = np.array(labels)
-	print("[INFO] data matrix: {:.2f}MB".format(
-		data.nbytes / (1024 * 1000.0)))
-	 
+# scale the raw pixel intensities to the range [0, 1]
+data = np.array(data, dtype="float") / 255.0
+labels = np.array(labels)
+print("[INFO] data matrix: {:.2f}MB".format(
+	data.nbytes / (1024 * 1000.0)))
+
 # binarize the labels
 lb = LabelBinarizer()
 labels = lb.fit_transform(labels)
- 
+
 # partition the data into training and testing splits using 80% of
 # the data for training and the remaining 20% for testing
 (trainX, testX, trainY, testY) = train_test_split(data,
@@ -87,7 +90,7 @@ model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0],
 opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss="categorical_crossentropy", optimizer=opt,
 	metrics=["accuracy"])
- 
+
 # train the network
 print("[INFO] training network...")
 H = model.fit_generator(
@@ -99,7 +102,7 @@ H = model.fit_generator(
 # save the model to disk
 print("[INFO] serializing network...")
 model.save(args["model"])
- 
+
 # save the label binarizer to disk
 print("[INFO] serializing label binarizer...")
 f = open(args["labelbin"], "wb")
@@ -119,4 +122,3 @@ plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="upper left")
 plt.savefig(args["plot"])
-
