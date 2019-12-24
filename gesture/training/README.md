@@ -14,8 +14,3 @@ conda activate tf-gpu
 python train-gesture.py --dataset dataset --model gesture.model --labelbin lb.pickle
 
 python classify.py --model gesture.model --labelbin lb.pickle --image example.jpg
-
-python train.py --dataset dataset --model pokedex.model --labelbin lb.pickle
-
-python classify.py --model pokedex.model --labelbin lb.pickle --image examples/charmander_counter.png
-

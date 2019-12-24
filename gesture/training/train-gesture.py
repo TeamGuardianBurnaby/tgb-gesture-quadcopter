@@ -54,18 +54,26 @@ random.shuffle(imagePaths)
 
 # loop over the input images
 for imagePath in imagePaths:
-	# load the image, pre-process it, and store it in the data list
-	image = cv2.imread(imagePath)
-	image = cv2.resize(image, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
+	# load the original image, pre-process it, and store it in the data list
+	originalImage = cv2.imread(imagePath)
+	image = cv2.resize(originalImage, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
 	image = img_to_array(image)
 	data.append(image)
 
-	spawnedImages = 
- 
 	# extract the class label from the image path and update the
 	# labels list
 	label = imagePath.split(os.path.sep)[-2]
 	labels.append(label)
+
+	# spawn more images from original image (if able), pre-process it, and store it
+	spawnedImages = datasetspawn.spawnImages(originalImage)
+	if spawnedImages is None:
+		continue
+	for spawnedImage in spawnedImages:
+		image = cv2.resize(spawnedImage, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
+		image = img_to_array(image)
+		data.append(image)
+		labels.append(label)
 
 # scale the raw pixel intensities to the range [0, 1]
 data = np.array(data, dtype="float") / 255.0
@@ -85,7 +93,7 @@ labels = lb.fit_transform(labels)
 # construct the image generator for data augmentation
 aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
 	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
-	horizontal_flip=True, fill_mode="nearest")
+	horizontal_flip=True, vertical_flip=True, fill_mode="nearest", brightness_range=[0.2,1.0])
 
 # initialize the model
 print("[INFO] compiling model...")
