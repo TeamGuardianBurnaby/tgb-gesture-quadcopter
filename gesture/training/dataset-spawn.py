@@ -2,7 +2,6 @@
 #
 # This should not substitute for actual data!
 
-
 import numpy as np
 import cv2
 from datetime import datetime
