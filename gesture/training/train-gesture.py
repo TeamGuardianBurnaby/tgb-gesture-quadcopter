@@ -21,6 +21,8 @@ import pickle
 import cv2
 import os
 
+import datasetspawn
+
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--dataset", required=True,
@@ -57,6 +59,8 @@ for imagePath in imagePaths:
 	image = cv2.resize(image, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
 	image = img_to_array(image)
 	data.append(image)
+
+	spawnedImages = 
  
 	# extract the class label from the image path and update the
 	# labels list
