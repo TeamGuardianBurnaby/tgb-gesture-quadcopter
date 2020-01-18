@@ -256,6 +256,10 @@ GitHub.sublime-
 *.jpeg
 *.jpg
 *.png
+*.gif
+
+## Excel
+*.csv
 
 ## Machine Learning
 *.pickle
