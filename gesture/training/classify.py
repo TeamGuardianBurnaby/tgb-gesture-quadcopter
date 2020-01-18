@@ -14,7 +14,7 @@ import os
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-m", "--model", required=True,
-	help="path to trained model model")
+	help="path to trained Keras model")
 ap.add_argument("-l", "--labelbin", required=True,
 	help="path to label binarizer")
 ap.add_argument("-i", "--image", required=True,

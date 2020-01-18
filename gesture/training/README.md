@@ -14,3 +14,5 @@ conda activate tf-gpu
 python train-gesture.py --dataset dataset --model gesture.model --labelbin lb.pickle
 
 python classify.py --model gesture.model --labelbin lb.pickle --image example.jpg
+
+python gesture-control.py --model gesture.model --labelbin lb.pickle

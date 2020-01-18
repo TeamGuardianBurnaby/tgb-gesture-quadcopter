@@ -5,23 +5,24 @@ from imutils.video import VideoStream
 import numpy as np
 import argparse
 import imutils
+import pickle
 import time
 import cv2
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--image", required=True,
-	help="path to input image we are going to classify")
+# ap.add_argument("-i", "--image", required=True,
+# 	help="path to input image we are going to classify")
 ap.add_argument("-m", "--model", required=True,
 	help="path to trained Keras model")
-ap.add_argument("-l", "--label-bin", required=True,
+ap.add_argument("-l", "--labelbin", required=True,
 	help="path to label binarizer")
-ap.add_argument("-w", "--width", type=int, default=28,
-	help="target spatial dimension width")
-ap.add_argument("-e", "--height", type=int, default=28,
-	help="target spatial dimension height")
-ap.add_argument("-f", "--flatten", type=int, default=-1,
-	help="whether or not we should flatten the image")
+# ap.add_argument("-w", "--width", type=int, default=28,
+# 	help="target spatial dimension width")
+# ap.add_argument("-e", "--height", type=int, default=28,
+# 	help="target spatial dimension height")
+# ap.add_argument("-f", "--flatten", type=int, default=-1,
+# 	help="whether or not we should flatten the image")
 args = vars(ap.parse_args())
 
 
@@ -32,7 +33,7 @@ ct = CentroidTracker()
 # load the model and label binarizer
 print("[INFO] loading network and label binarizer...")
 model = load_model(args["model"])
-lb = pickle.loads(open(args["label_bin"], "rb").read())
+lb = pickle.loads(open(args["labelbin"], "rb").read())
 
 # initialize the video stream and allow the camera sensor to warmup
 print("[INFO] starting video stream...")
@@ -62,7 +63,7 @@ while True:
 	for i in range(0, detections.shape[2]):
 		# filter out weak detections by ensuring the predicted
 		# probability is greater than a minimum threshold
-		if detections[0, 0, i, 2] > args["confidence"]:
+		if detections[0, 0, i, 2] > args["confidence"]:cl
 			# compute the (x, y)-coordinates of the bounding box for
 			# the object, then update the bounding box rectangles list
 			box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
