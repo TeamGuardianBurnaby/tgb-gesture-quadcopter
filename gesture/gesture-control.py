@@ -111,7 +111,7 @@ import cv2
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-t", "--tracker", type=str, default="kcf",
+ap.add_argument("-t", "--tracker", type=str, default="csrt",
 	help="OpenCV object tracker type")
 args = vars(ap.parse_args())
 
