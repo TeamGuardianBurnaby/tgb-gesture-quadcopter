@@ -5,6 +5,7 @@ import argparse
 import imutils
 import time
 import cv2
+import threading
 
 class GestureControl:
 	def __init__(self, trackerType = "csrt"):
@@ -25,6 +26,13 @@ class GestureControl:
 		# grab the appropriate object tracker using our dictionary of
 		# OpenCV object tracker objects
 		self.tracker = OPENCV_OBJECT_TRACKERS[trackerType]()
+		self.vectorX = 0.0
+		self.vectorY = 0.0
+		self.vectorZ = 0.0
+
+	def grabVector(self):
+		# Acquire lock, read the values then release lock
+		return (self.vectorX, self.vectorY, self.vectorZ)
 
 	def run(self):
 		# initialize the bounding box coordinates of the object we are going
@@ -36,10 +44,15 @@ class GestureControl:
 		vs = VideoStream(src=0).start()
 		time.sleep(1.0)
 		 
-		# initialize the FPS throughput estimator
+		# Initialise variables
 		fps = None
 		preX = 0.0
 		preY = 0.0
+		preZ = 0.0
+
+		vectorX = 0.0
+		vectorY = 0.0
+		vectorZ = 0.0
 
 		# loop over frames from the video stream
 		while True:
@@ -67,10 +80,22 @@ class GestureControl:
 					cv2.rectangle(frame, (x, y), (x + w, y + h),
 						(0, 255, 0), 2)
 
-					vectorX = x + w/2 - preX
-					vectorY = y + h/2 - preY
+					vectorX += x + w/2 - preX
+					vectorY += y + h/2 - preY
+					vectorZ += 0.0 # Needs work
 					preX = x + w/2
-					preY = y + w/2
+					preY = y + h/2
+
+					# Only write if lock is acquired
+					# Needs work
+					if (True):
+						self.vectorX = vectorX
+						self.vectorY = vectorY
+						self.vectorZ = vectorZ
+
+						vectorX = 0.0
+						vectorY = 0.0
+						vectorZ = 0.0
 		 
 				# update the FPS counter
 				fps.update()
@@ -83,7 +108,7 @@ class GestureControl:
 					("Success", "Yes" if success else "No"),
 					("FPS", "{:.2f}".format(fps.fps())),
 					("Centre of Box", "{}: {}".format(x + w/2, y + h/2)),
-					("Vector of Box", "{:.2f}: {:.2f}".format(vectorX, vectorY)),
+					("Vector of Box", "{:.2f}, {:.2f}, {:.2f}".format(self.vectorX, self.vectorY, self.vectorZ)),
 				]
 		 
 				# loop over the info tuples and draw them on our frame
