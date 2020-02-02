@@ -11,6 +11,7 @@ class GestureControl:
 	def __init__(self, trackerType = "csrt"):
 		self.trackerType = trackerType
 		self.running = False
+		self.vectorLock = threading.Lock()
 
 		# initialize a dictionary that maps strings to their corresponding
 		# OpenCV object tracker implementations
@@ -32,8 +33,18 @@ class GestureControl:
 		self.vectorZ = 0.0
 
 	def grabVector(self):
+		vectorX = 0.0
+		vectorY = 0.0
+		vectorZ = 0.0
+
 		# Acquire lock, read the values then release lock
-		return (self.vectorX, self.vectorY, self.vectorZ)
+		if self.vectorLock.acquire():
+			vectorX = self.vectorX
+			vectorY = self.vectorY
+			vectorZ = self.vectorZ
+			self.vectorLock.release()
+
+		return (vectorX, vectorY, vectorZ)
 
 	def run(self):
 		# initialize the bounding box coordinates of the object we are going
@@ -88,9 +99,8 @@ class GestureControl:
 					preX = x + w/2
 					preY = y + h/2
 
-					# Only write if lock is acquired
-					# Needs work
-					if (True):
+					# If unable to acquire the lock, don't update the vectors
+					if self.vectorLock.acquire(False):
 						self.vectorX = vectorX
 						self.vectorY = vectorY
 						self.vectorZ = vectorZ
@@ -98,6 +108,7 @@ class GestureControl:
 						vectorX = 0.0
 						vectorY = 0.0
 						vectorZ = 0.0
+						self.vectorLock.release()
 		 
 				# update the FPS counter
 				fps.update()
@@ -148,7 +159,7 @@ class GestureControl:
 		cv2.destroyAllWindows()
 
 	# Returns the state of gesture control
-	def checkRunning():
+	def checkRunning(self):
 		return self.running
 
 if __name__ == "__main__":
@@ -160,3 +171,5 @@ if __name__ == "__main__":
 
 	gestureControl = GestureControl(args["tracker"])
 	gestureControl.run()
+
+	# Test Locks work
