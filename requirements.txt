@@ -1,6 +1,6 @@
 dronekit
 dronekit-sitl
-opencv-python
+opencv-contrib-python
 numpy
 scipy
 imutils
