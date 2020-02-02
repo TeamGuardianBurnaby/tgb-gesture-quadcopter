@@ -10,6 +10,7 @@ import threading
 class GestureControl:
 	def __init__(self, trackerType = "csrt"):
 		self.trackerType = trackerType
+		self.running = False
 
 		# initialize a dictionary that maps strings to their corresponding
 		# OpenCV object tracker implementations
@@ -55,7 +56,8 @@ class GestureControl:
 		vectorZ = 0.0
 
 		# loop over frames from the video stream
-		while True:
+		self.running = True
+		while self.running:
 			# grab the current frame, then handle if we are using a
 			# VideoStream or VideoCapture object
 			frame = vs.read()
@@ -140,9 +142,14 @@ class GestureControl:
 		 
 		# if we are using a webcam, release the pointer
 		vs.stop()
+		self.running = False
 		 
 		# close all windows
 		cv2.destroyAllWindows()
+
+	# Returns the state of gesture control
+	def checkRunning():
+		return self.running
 
 if __name__ == "__main__":
 	# construct the argument parser and parse the arguments
