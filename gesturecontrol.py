@@ -6,6 +6,7 @@ import imutils
 import time
 import cv2
 import threading
+import csv
 
 class GestureControl:
 	def __init__(self, trackerType = "csrt"):
@@ -24,7 +25,7 @@ class GestureControl:
 			"medianflow": cv2.TrackerMedianFlow_create,
 			"mosse": cv2.TrackerMOSSE_create
 		}
-	 
+
 		# grab the appropriate object tracker using our dictionary of
 		# OpenCV object tracker objects
 		self.tracker = OPENCV_OBJECT_TRACKERS[trackerType]()
@@ -46,7 +47,7 @@ class GestureControl:
 
 		return (vectorX, vectorY, vectorZ)
 
-	def run(self):
+	def run(self, saveData = False):
 		# initialize the bounding box coordinates of the object we are going
 		# to track
 		initBB = None
@@ -55,7 +56,7 @@ class GestureControl:
 		print("[INFO] starting video stream...")
 		vs = VideoStream(src=0).start()
 		time.sleep(1.0)
-		 
+
 		# Initialise variables
 		fps = None
 		preX = 0.0
@@ -66,17 +67,20 @@ class GestureControl:
 		vectorY = 0.0
 		vectorZ = 0.0
 
+		vectorDataSet = []
 		# loop over frames from the video stream
 		self.running = True
+		initialTime = time.time()
+
 		while self.running:
 			# grab the current frame, then handle if we are using a
 			# VideoStream or VideoCapture object
 			frame = vs.read()
-		 
+
 			# check to see if we have reached the end of the stream
 			if frame is None:
 				break
-		 
+
 			# resize the frame (so we can process it faster) and grab the
 			# frame dimensions
 			frame = imutils.resize(frame, width=500)
@@ -86,7 +90,7 @@ class GestureControl:
 			if initBB is not None:
 				# grab the new bounding box coordinates of the object
 				(success, box) = self.tracker.update(frame)
-		 
+
 				# check to see if the tracking was a success
 				if success:
 					(x, y, w, h) = [int(v) for v in box]
@@ -109,11 +113,17 @@ class GestureControl:
 						vectorY = 0.0
 						vectorZ = 0.0
 						self.vectorLock.release()
-		 
+
 				# update the FPS counter
 				fps.update()
 				fps.stop()
-		 
+
+				finalTime = time.time()
+				# Append new data set after every quarter of a second
+				if writecsv and finalTime - initialTime > 0.25:
+					vectorDataSet.append(self.grabVector())
+					initialTime = finalTime
+
 				# initialize the set of information we'll be displaying on
 				# the frame
 				info = [
@@ -123,7 +133,7 @@ class GestureControl:
 					("Centre of Box", "{}: {}".format(x + w/2, y + h/2)),
 					("Vector of Box", "{:.2f}, {:.2f}, {:.2f}".format(self.vectorX, self.vectorY, self.vectorZ)),
 				]
-		 
+
 				# loop over the info tuples and draw them on our frame
 				for (i, (k, v)) in enumerate(info):
 					text = "{}: {}".format(k, v)
@@ -133,7 +143,7 @@ class GestureControl:
 			# show the output frame
 			cv2.imshow("Frame", frame)
 			key = cv2.waitKey(1) & 0xFF
-		 
+
 			# if the 's' key is selected, we are going to "select" a bounding
 			# box to track
 			if key == ord("s"):
@@ -141,7 +151,7 @@ class GestureControl:
 				# sure you press ENTER or SPACE after selecting the ROI)
 				initBB = cv2.selectROI("Frame", frame, fromCenter=False,
 					showCrosshair=True)
-		 
+
 				# start OpenCV object tracker using the supplied bounding box
 				# coordinates, then start the FPS throughput estimator as well
 				self.tracker.init(frame, initBB)
@@ -150,30 +160,42 @@ class GestureControl:
 			# if the `q` key was pressed, break from the loop
 			elif key == ord("q"):
 				break
-		 
+
 		# if we are using a webcam, release the pointer
 		vs.stop()
 		self.running = False
-		 
+
 		# close all windows
 		cv2.destroyAllWindows()
+
+		if writecsv:
+			self.createCSV(vectorDataSet)
 
 	# Returns the state of gesture control
 	def checkRunning(self):
 		return self.running
+
+	def createCSV(self, dataSet):
+		with open('GesturePlayBack.csv', 'w', newline ='') as file:
+			writer = csv.writer(file)
+			for set in dataSet:
+				writer.writerow(list(set))
 
 if __name__ == "__main__":
 	# construct the argument parser and parse the arguments
 	ap = argparse.ArgumentParser()
 	ap.add_argument("-t", "--tracker", type=str, default="csrt",
 		help="OpenCV object tracker type")
+	ap.add_argument("-w", "--writecsv", type=str, default="", help="write -> writes a csv")
 	args = vars(ap.parse_args())
+
+	writecsv = args['writecsv'] == "write"
 
 	gestureControl = GestureControl(args["tracker"])
 	gestureControlThread = threading.Thread(target = gestureControl.run, args=())
 	# gestureControlThread.daemon = True
 	gestureControlThread.start()
-	
+
 	while True:
 		print(gestureControl.grabVector())
 
