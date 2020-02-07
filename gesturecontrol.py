@@ -170,6 +170,11 @@ if __name__ == "__main__":
 	args = vars(ap.parse_args())
 
 	gestureControl = GestureControl(args["tracker"])
-	gestureControl.run()
+	gestureControlThread = threading.Thread(target = gestureControl.run, args=())
+	# gestureControlThread.daemon = True
+	gestureControlThread.start()
+	
+	while True:
+		print(gestureControl.grabVector())
 
 	# Test Locks work
