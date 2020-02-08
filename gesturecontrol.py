@@ -7,6 +7,7 @@ import time
 import cv2
 import threading
 import csv
+import random
 
 class GestureControl:
 	def __init__(self, trackerType = "csrt"):
@@ -47,7 +48,7 @@ class GestureControl:
 
 		return (vectorX, vectorY, vectorZ)
 
-	def run(self, saveData = False):
+	def stream(self, saveData = False):
 		# initialize the bounding box coordinates of the object we are going
 		# to track
 		initBB = None
@@ -167,6 +168,28 @@ class GestureControl:
 		if writecsv:
 			self.createCSV(vectorDataSet)
 
+	def playback(self):
+		print("[INFO] Playback random values")
+		self.running = True
+
+		while self.running:
+			time.sleep(0.5)
+			key = cv2.waitKey(1) & 0xFF
+
+			# if the `q` key was pressed, break from the loop
+			if key == ord("q"):
+				# Needs work
+				self.running = False
+				break
+
+			if self.vectorLock.acquire(False):
+				self.vectorX = random.randint(-1,1)
+				self.vectorY = random.randint(-1,1)
+				self.vectorZ = 0.0
+				
+				self.vectorLock.release()
+		cv2.destroyAllWindows()
+
 	# Returns the state of gesture control
 	def checkRunning(self):
 		return self.running
@@ -180,15 +203,22 @@ class GestureControl:
 if __name__ == "__main__":
 	# construct the argument parser and parse the arguments
 	ap = argparse.ArgumentParser()
+	ap.add_argument("-p", "--playback", type=str, default="",
+		help="Specify playback file")
 	ap.add_argument("-t", "--tracker", type=str, default="csrt",
 		help="OpenCV object tracker type")
 	ap.add_argument("-w", "--writecsv", type=str, default="", help="write -> writes a csv")
 	args = vars(ap.parse_args())
 
 	writecsv = args['writecsv'] == "write"
+	playback = args['playback'] == "random"
 
 	gestureControl = GestureControl(args["tracker"])
-	gestureControlThread = threading.Thread(target = gestureControl.run, args=([writecsv]))
+
+	if playback:
+		gestureControlThread = threading.Thread(target = gestureControl.playback, args=())
+	else:
+		gestureControlThread = threading.Thread(target = gestureControl.stream, args=([writecsv]))
 	gestureControlThread.setDaemon = True
 	gestureControlThread.start()
 
