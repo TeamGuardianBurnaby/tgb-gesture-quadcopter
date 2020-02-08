@@ -70,7 +70,6 @@ class GestureControl:
 		vectorDataSet = []
 		# loop over frames from the video stream
 		self.running = True
-		initialTime = time.time()
 
 		while self.running:
 			# grab the current frame, then handle if we are using a
@@ -114,15 +113,12 @@ class GestureControl:
 						vectorZ = 0.0
 						self.vectorLock.release()
 
+					if writecsv:
+						vectorDataSet.append(self.grabVector())
+
 				# update the FPS counter
 				fps.update()
 				fps.stop()
-
-				finalTime = time.time()
-				# Append new data set after every quarter of a second
-				if writecsv and finalTime - initialTime > 0.25:
-					vectorDataSet.append(self.grabVector())
-					initialTime = finalTime
 
 				# initialize the set of information we'll be displaying on
 				# the frame
@@ -192,7 +188,7 @@ if __name__ == "__main__":
 	writecsv = args['writecsv'] == "write"
 
 	gestureControl = GestureControl(args["tracker"])
-	gestureControlThread = threading.Thread(target = gestureControl.run, args=())
+	gestureControlThread = threading.Thread(target = gestureControl.run, args=([writecsv]))
 	# gestureControlThread.daemon = True
 	gestureControlThread.start()
 
