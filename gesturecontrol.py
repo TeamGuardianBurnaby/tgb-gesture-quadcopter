@@ -54,6 +54,7 @@ class GestureControl:
 
 		# if a video path was not supplied, grab the reference to the web cam
 		print("[INFO] starting video stream...")
+		self.running = True
 		vs = VideoStream(src=0).start()
 		time.sleep(1.0)
 
@@ -68,9 +69,8 @@ class GestureControl:
 		vectorZ = 0.0
 
 		vectorDataSet = []
-		# loop over frames from the video stream
-		self.running = True
 
+		# loop over frames from the video stream
 		while self.running:
 			# grab the current frame, then handle if we are using a
 			# VideoStream or VideoCapture object
@@ -189,10 +189,9 @@ if __name__ == "__main__":
 
 	gestureControl = GestureControl(args["tracker"])
 	gestureControlThread = threading.Thread(target = gestureControl.run, args=([writecsv]))
-	# gestureControlThread.daemon = True
+	gestureControlThread.setDaemon = True
 	gestureControlThread.start()
 
-	while True:
+	time.sleep(2.0)
+	while gestureControl.checkRunning():
 		print(gestureControl.grabVector())
-
-	# Test Locks work
