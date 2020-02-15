@@ -7,7 +7,6 @@ import time
 import cv2
 import threading
 import csv
-import random
 
 class GestureControl:
 	def __init__(self, trackerType = "csrt"):
@@ -48,6 +47,11 @@ class GestureControl:
 
 		return (vectorX, vectorY, vectorZ)
 
+	def updateVectors(self, vectorX, vectorY, vectorZ):
+		self.vectorX = vectorX
+		self.vectorY = vectorY
+		self.vectorZ = vectorZ
+
 	def stream(self, saveData = False):
 		# initialize the bounding box coordinates of the object we are going
 		# to track
@@ -70,7 +74,7 @@ class GestureControl:
 		vectorZ = 0.0
 
 		vectorDataSet = []
-
+		startTime = 0
 		# loop over frames from the video stream
 		while self.running:
 			# grab the current frame, then handle if we are using a
@@ -105,17 +109,17 @@ class GestureControl:
 
 					# If unable to acquire the lock, don't update the vectors
 					if self.vectorLock.acquire(False):
-						self.vectorX = vectorX
-						self.vectorY = vectorY
-						self.vectorZ = vectorZ
-
+						self.updateVectors(vectorX, vectorY, vectorZ)
 						vectorX = 0.0
 						vectorY = 0.0
 						vectorZ = 0.0
 						self.vectorLock.release()
 
+					elapsedTimeSinceFirstDetection = time.time() - startTime
 					if writecsv:
-						vectorDataSet.append(self.grabVector())
+						data = list(self.grabVector())
+						data.append(elapsedTimeSinceFirstDetection)
+						vectorDataSet.append(data)
 
 				# update the FPS counter
 				fps.update()
@@ -148,6 +152,7 @@ class GestureControl:
 				# sure you press ENTER or SPACE after selecting the ROI)
 				initBB = cv2.selectROI("Frame", frame, fromCenter=False,
 					showCrosshair=True)
+				startTime = time.time()
 
 				# start OpenCV object tracker using the supplied bounding box
 				# coordinates, then start the FPS throughput estimator as well
@@ -168,26 +173,38 @@ class GestureControl:
 		if writecsv:
 			self.createCSV(vectorDataSet)
 
-	def playback(self):
-		print("[INFO] Playback random values")
+	def playback(self, fileName):
+		print("[INFO] Playback data from csv sheet")
 		self.running = True
 
-		while self.running:
-			time.sleep(0.5)
-			key = cv2.waitKey(1) & 0xFF
+		dataList = self.getCSVData(fileName)
+		while self.checkRunning():
+			previousDataSetTime = 0
+			for data in dataList:
+				if data == dataList[0]:
+					sleepTime = data[3]
+				else:
+					sleepTime = data[3] - previousDataSetTime
+				vectorX = data[0]
+				vectorY = data[1]
+				vectorZ = data[2]
+				time.sleep(sleepTime)
+				key = cv2.waitKey(1) & 0xFF
 
-			# if the `q` key was pressed, break from the loop
-			if key == ord("q"):
-				# Needs work
-				self.running = False
-				break
+				# if the `q` key was pressed, break from the loop
+				if key == ord("q"):
+					# Needs work
+					self.running = False
+					break
 
-			if self.vectorLock.acquire(False):
-				self.vectorX = random.randint(-1,1)
-				self.vectorY = random.randint(-1,1)
-				self.vectorZ = 0.0
-				
-				self.vectorLock.release()
+				if self.vectorLock.acquire(False):
+					self.updateVectors(vectorX, vectorY, vectorZ)
+					self.vectorLock.release()
+
+				previousDataSetTime = data[3]
+
+			self.running = False
+
 		cv2.destroyAllWindows()
 
 	# Returns the state of gesture control
@@ -200,6 +217,18 @@ class GestureControl:
 			for set in dataSet:
 				writer.writerow(list(set))
 
+	def getCSVData(self, filename):
+		data = []
+
+		with open(filename) as csvFile:
+			reader = csv.reader(csvFile, delimiter = ',')
+			for row in reader:
+				if row != []:
+					data.append([float(item) for item in row])
+		csvFile.close()
+
+		return data
+
 if __name__ == "__main__":
 	# construct the argument parser and parse the arguments
 	ap = argparse.ArgumentParser()
@@ -211,17 +240,19 @@ if __name__ == "__main__":
 	args = vars(ap.parse_args())
 
 	writecsv = args['writecsv'] == "write"
-	playback = args['playback'] == "random"
+	playback = args['playback'] != ''
 
 	gestureControl = GestureControl(args["tracker"])
 
 	if playback:
-		gestureControlThread = threading.Thread(target = gestureControl.playback, args=())
+		gestureControlThread = threading.Thread(target = gestureControl.playback, args=([args['playback']]))
 	else:
 		gestureControlThread = threading.Thread(target = gestureControl.stream, args=([writecsv]))
 	gestureControlThread.setDaemon = True
 	gestureControlThread.start()
 
-	time.sleep(2.0)
+	time.sleep(0.2)
 	while gestureControl.checkRunning():
+		time.sleep(0.05)
 		print(gestureControl.grabVector())
+
