@@ -54,6 +54,9 @@ class GestureControl:
             self.vectorY = vectorY
             self.vectorZ = vectorZ
             self.vectorLock.release()
+            return True
+
+        return False
 
     def stream(self, saveData = False):
         # initialize the bounding box coordinates of the object we are going
@@ -111,8 +114,7 @@ class GestureControl:
                     preY = y + h/2
 
                     # If unable to acquire the lock, don't update the vectors
-                    if self.vectorLock.acquire(False):
-                        self.updateVectors(vectorX, vectorY, vectorZ)
+                    if self.updateVectors(vectorX, vectorY, vectorZ) is True:
                         vectorX = 0.0
                         vectorY = 0.0
                         vectorZ = 0.0
