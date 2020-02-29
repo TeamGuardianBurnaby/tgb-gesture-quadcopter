@@ -241,7 +241,7 @@ class GestureControl:
 if __name__ == "__main__":
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
-    ap.add_argument("-p", "--playback", type=str, default="Ge",
+    ap.add_argument("-p", "--playback", type=str, default="",
         help="Specify playback file")
     ap.add_argument("-t", "--tracker", type=str, default="csrt",
         help="OpenCV object tracker type")
