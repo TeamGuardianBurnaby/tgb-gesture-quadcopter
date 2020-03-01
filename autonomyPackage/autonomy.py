@@ -1,6 +1,12 @@
 from threading import Event, Thread, Lock
-from multiprocessing import Pipe
-from dronekit import connect
+from multiprocessing import Process, Pipe
+from dronekit import connect, VehicleMode
+
+
+coordsPipe, coordsReceiver = Pipe()  # sender, receiver
+gesturesPipe, gesturesReceiver = Pipe()
+n = 30 # size of the grid
+mode = "START"  # TODO: globals arent a good practice, look into inter-thread communication
 
 def send_ned_velocity(velocity_x, velocity_y, velocity_z, duration):
     """
@@ -25,83 +31,116 @@ def send_ned_velocity(velocity_x, velocity_y, velocity_z, duration):
         vehicle.send_mavlink(msg)
         time.sleep(1)
         
+# stub functions for coords/gestures
+def coordinatesMain(sendPipe, n):
+    pass
+
+def gesturesMain(sendPipe):
+    pass
         
 class AutonomyController:
     def __init__(self):
-        self.commThread = Thread(target=self.receive) 
+        self.commThreadCoords = Thread(target=self.receiveFromCoords)
+        self.commThreadGesture = Thread(target=self.receiveFromGestures) 
         self.receiver = Pipe()
         self.currentlyFlying = False  # whether the drone is currently executing a flight command
         self.command = None
         self.currentCoordinate = [0, 0, 0]        
         self.commandLock = Lock()
         self.error = False # error code that indicates a need to land, implement an interrupt?
+        self.coordinatesProcess = Process(target = coordinatesMain, args = (coordsPipe, n))        
+        self.gesturesProcess = Process(target = gesturesMain, args = (gesturesPipe,))
 
         # check if we need to lock this if one thread is reading and the other is writing
         self.coordLock = Lock()  
 
+
     def main(self):
         # start the threads, then do cleanup before shutdown once flightCtrl terminates
-        self.commThread.start()
-        self.flightCtrl()
+        self.commThreadCoords.start()
+        self.commThreadGesture.start()
+        self.coordinatesProcess.start()
+        self.gesturesProcess.start()
 
-        self.receiver.close()
-        self.commThread.join()
+        #self.flightCtrl()
+        mode = "LAND"
+        
+        
+        self.commThreadCoords.join()
+        self.commThreadGesture.join()
+        print("Threads joined")
+        self.coordinatesProcess.join()
+        self.gesturesProcess.join()
+
 
     def takeoff(self, altitude):
 
-        vehicle = connect(connection_string, wait_ready=True)
-        while vehicle.is_armable() == True:
-           vehicle.mode = dronekit.VehicleMode("GUIDED")
-           vehicle.armed == True
-           vehicle.simple_takeoff(altitude)
+        self.vehicle = connect(connection_string, wait_ready=True)
+        while self.vehicle.is_armable() == True:
+           self.vehicle.mode = dronekit.VehicleMode("GUIDED")
+           self.vehicle.armed == True
+           self.vehicle.simple_takeoff(altitude)
 
-    def receive(self):
+    def receiveFromCoords(self):
         # receive the flight commands from Jin and location from Conner
-        while True:
-            res = self.receiver.recv()
+        
+        while mode != "LAND":
+            print(mode)
+            
+            res = coordsReceiver.recv()
+            print(res)
             # determine which process the message is from
-            if res[0] == 'coord':
-            	self.currentCoordinate = res
-            else:
-	            if self.currentlyFlying:
-	            	# Drone is currently executing last instruction, ignore incoming instructions
-	            	# TODO: can check if last instruction is within milliseconds of finishing, in which case, queue this instruction
-	                continue  
-	            else
-	            	self.commandLock.acquire(blocking=True)
-	                command = res
-	                self.commandLock.release()
+            self.currentCoordinate = res
+        return
+            
+    def receiveFromGestures(self):
+        
+        while mode != "LAND":
+            print(mode)
+          
+            res = gesturesReceiver.recv()
+            print(res)
 
-    
+            if self.currentlyFlying:
+                # Drone is currently executing last instruction, ignore incoming instructions
+                # TODO: can check if last instruction is within milliseconds of finishing, in which case, queue this instruction
+                continue  
+            else:
+                self.commandLock.acquire(blocking=True)
+                command = res
+                self.commandLock.release()
+        return
+
     def move(self, move_vector):
         pass
 
     def land(self):
 
         #check location
-        vehicle.mode = VehicleMode("LAND")
+        self.vehicle.mode = VehicleMode("LAND")
         #when altitude reaches 0, send message 'landed'
-        vehicle.close()
+        self.vehicle.close()
         stil.stop()
 
     def flightCtrl(self):
         # The main decision process for autonomy.
         # This function should terminate when the process is ready to terminate.
-        while(true):
-        	if self.command == None:
-        		continue
-        	elif:
-        		# command is to land
-        		break
-    		else:
-    			valid = check_location(self.currentCoordinate[0], self.currentCoordinate[1])
-    			if (valid):
-    				fly()
-    				self.commandLock.acquire(blocking=True)
-    				self.command = None
-    				self.commandLock.release()
-    			else:
-    				continue
+        while(self.mode != "LAND"):
+            
+            if self.command == None:
+                continue
+            elif self.command == 'land':
+                self.land()
+                break
+            else:
+                valid = check_location(self.currentCoordinate[0], self.currentCoordinate[1])
+                if (valid):
+                    #fly()
+                    self.commandLock.acquire(blocking=True)
+                    self.command = None
+                    self.commandLock.release()
+                else:
+                    continue
         
 
     def check_location(self, primary, secondary) -> bool:
@@ -122,6 +161,6 @@ class AutonomyController:
         if self.check_location:
             send_ned_velocity(x, y, z, FLIGHTDURATION)
             send_ned_velocity(0, 0, 0, 1)
-        Else:
+        else:
             print("Invalid movement\n")
         currentlyFlying = False
