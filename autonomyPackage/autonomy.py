@@ -1,4 +1,5 @@
-from threading import Event, Thread, Lock
+from threading import Event, Thread
+import queue
 from multiprocessing import Process, Pipe
 from dronekit import connect, VehicleMode
 
@@ -37,19 +38,45 @@ def coordinatesMain(sendPipe, n):
 
 def gesturesMain(sendPipe):
     pass
+
+class CommunicationThread(threading.Thread):
+    """
+    Handles incoming communcation from coordinates and gestures
+    """
+    def __init__(self, sendQueue, recvPipe, stopRequest):
+        super(communicationThread, self).__init__()
+        self.sendQueue = sendQueue  # pass data received to main thread
+        self.stopRequest = stopRequest
+        self.recvPipe = recvPipe
+
+    def run(self):
+        while not self.stoprequest.isSet():            
+            res = recvPipe.recv()
+            sendQueue.put(res)
+
+    def join(self):
+        super(CommunicationThread, self).join()
+
         
 class AutonomyController:
     def __init__(self):
-        self.commThreadCoords = Thread(target=self.receiveFromCoords)
-        self.commThreadGesture = Thread(target=self.receiveFromGestures) 
-        self.receiver = Pipe()
+
+        
         self.currentlyFlying = False  # whether the drone is currently executing a flight command
         self.command = None
         self.currentCoordinate = [0, 0, 0]        
-        self.commandLock = Lock()
         self.error = False # error code that indicates a need to land, implement an interrupt?
+
+        self.coordsPipe = Pipe()
+        self.gesturesPipe = Pipe()
         self.coordinatesProcess = Process(target = coordinatesMain, args = (coordsPipe, n))        
         self.gesturesProcess = Process(target = gesturesMain, args = (gesturesPipe,))
+
+        coordsDataQueue = queue.Queue()
+        gestureDataQueue = queue.Queue()
+        self.stopRequest = threading.Event() # signal threads to stop
+        self.commThreadCoords = CommunicationThread(coordsDataQueue, coordsPipe, stopRequest)
+        self.commThreadGesture = CommunicationThread(gestureDataQueue, gesturesPipe, stopRequest) 
 
         # check if we need to lock this if one thread is reading and the other is writing
         self.coordLock = Lock()  
@@ -80,66 +107,51 @@ class AutonomyController:
            self.vehicle.mode = dronekit.VehicleMode("GUIDED")
            self.vehicle.armed == True
            self.vehicle.simple_takeoff(altitude)
-
-    def receiveFromCoords(self):
-        # receive the flight commands from Jin and location from Conner
         
-        while mode != "LAND":
-            print(mode)
             
-            res = coordsReceiver.recv()
-            print(res)
-            # determine which process the message is from
-            self.currentCoordinate = res
-        return
-            
-    def receiveFromGestures(self):
-        
-        while mode != "LAND":
-            print(mode)
-          
-            res = gesturesReceiver.recv()
-            print(res)
-
-            if self.currentlyFlying:
-                # Drone is currently executing last instruction, ignore incoming instructions
-                # TODO: can check if last instruction is within milliseconds of finishing, in which case, queue this instruction
-                continue  
-            else:
-                self.commandLock.acquire(blocking=True)
-                command = res
-                self.commandLock.release()
-        return
 
     def move(self, move_vector):
         pass
 
     def land(self):
 
+        self.stopRequest.set()
         #check location
         self.vehicle.mode = VehicleMode("LAND")
         #when altitude reaches 0, send message 'landed'
         self.vehicle.close()
         stil.stop()
 
-    def flightCtrl(self):
+    def flight_control(self):
         # The main decision process for autonomy.
         # This function should terminate when the process is ready to terminate.
+
         while(self.mode != "LAND"):
-            
-            if self.command == None:
+
+            # Check if there are any new instructions. 
+            # If so, get the latest one (any missed instruction from past are discarded)
+            if self.gestureDataQueue.empty():
                 continue
-            elif self.command == 'land':
+            else:
+                while not gestureDataQueue.empty()
+                self.command = self.gestureDataQueue.get(block=false)
+         
+
+            if self.command == 'land':  # a land instruction will need to be determined
                 self.land()
                 break
             else:
+                # get current drone location.   Delete any old location updates
+                while not coordsDataQueue.empty():
+                    self.currentCoordinate.get(block=false)
+
                 valid = check_location(self.currentCoordinate[0], self.currentCoordinate[1])
+
                 if (valid):
-                    #fly()
-                    self.commandLock.acquire(blocking=True)
-                    self.command = None
-                    self.commandLock.release()
+                    self.fly()                    
+                    
                 else:
+                    ## TODO: handle invalid location
                     continue
         
 
