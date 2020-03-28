@@ -137,7 +137,7 @@ class AutonomyController:
                 self.command = self.gestureDataQueue.get(block=false)
          
 
-            if self.command == 'land':  # a land instruction will need to be determined
+            if self.command == 'land':  # TODO: a land instruction will need to be determined
                 self.land()
                 break
             else:
